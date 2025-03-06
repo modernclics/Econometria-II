@@ -1,6 +1,4 @@
-# -----------------------------------------------------------------------------
-#                       Carga de paquetes necesarios
-# -----------------------------------------------------------------------------
+# 
 library(dplyr)
 library(ggplot2)
 library(tseries)
@@ -11,15 +9,14 @@ library(urca)
 library(tsDyn)
 library(readxl)
 # -----------------------------------------------------------------------------
-#                       Carga y preparación de los datos
-# -----------------------------------------------------------------------------
+
 data <- read_xlsx(file.choose())
 data$date <- as.Date(data$date)
 # Imputar valores NA con interpolación lineal
 data$colcap <- na.approx(data$colcap, na.rm = FALSE)
 data <- data %>% filter(date <= as.Date("2025-02-12"))
 
-# Crear la serie trimestral agregando el promedio por trimestre
+# Crear la serie para por trimestres
 data_trimestral <- data %>%
   mutate(Year = year(date), Quarter = quarter(date)) %>%
   group_by(Year, Quarter) %>%
@@ -31,14 +28,14 @@ data_trimestral <- data %>%
   mutate(date = as.Date(paste0(Year, "-", (Quarter - 1) * 3 + 1, "-01"))) # Convertir a fecha real
 
 # -----------------------------------------------------------------------------
-#                       Estadística descriptiva
+#                       Estadística descriptiva de las series 
 # -----------------------------------------------------------------------------
 summary(data_trimestral[, c("colcap", "trm")])
 sd(data_trimestral$colcap) 
 sd(data_trimestral$trm)
 
 # -----------------------------------------------------------------------------
-#                       Gráficas de las series
+#                       Gráficas de las series (rojo trm, colcap azul)
 # -----------------------------------------------------------------------------
 ggplot(data_trimestral, aes(x = date)) +
   geom_line(aes(y = colcap, color = "COLCAP", group = 1), size = 1) +
@@ -51,14 +48,14 @@ ggplot(data_trimestral, aes(x = date)) +
   theme_minimal()
 
 # -----------------------------------------------------------------------------
-#           Pruebas de estacionariedad (Dickey-Fuller aumentado)
+#           Pruebas de estacionariedad (Dickey-Fuller aumentado) con k=2 porque como se especificó en el trabajo se considero criterio de hannan-quinn
 # -----------------------------------------------------------------------------
 VARselect(data_trimestral$colcap, lag.max = 10, type = "const")
 VARselect(data_trimestral$trm, lag.max = 10, type = "const")
 adf.test(data_trimestral$colcap, k = 2)
 adf.test(data_trimestral$trm, k = 2)
 # -----------------------------------------------------------------------------
-#           Prueba de Cointegración (Johansen) y Engle - Granger
+#           Prueba de Cointegración (Johansen porque en una relación nos dió cointegradas) y Engle - Granger
 # -----------------------------------------------------------------------------
 # Convertir a serie de tiempo trimestral
 data_ts <- ts(data_trimestral[, c("trm", "colcap")], 
